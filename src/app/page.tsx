@@ -2,7 +2,6 @@
 'use client';
 
 import { useState, useEffect, CSSProperties } from 'react'; // Import CSSProperties here
-import { marked } from 'marked';
 
 export default function Home() {
   // State untuk form utama
@@ -136,7 +135,7 @@ export default function Home() {
         Enter a prompt, let AI craft your content, and publish it as a draft to your WordPress site.
       </p>
       <p style={{ ...styles.subheading, fontSize: '1em', marginTop: '-15px', marginBottom: '35px' }}>
-        Need help? See the <a href="https://github.com/dendi-wp/posts-llm-wordpress#readme" target="_blank" rel="noopener noreferrer" style={{ color: '#0070f3', textDecoration: 'underline' }}>tutorial & docs</a> or <a href="#0-api-configuration" style={{ color: '#0070f3', textDecoration: 'underline' }}>configure API</a>.
+        Need help? See the <a href="https://organized-mochi-86e.notion.site/Dokumentasi-AI-Powered-WordPress-Post-Generator-20cf640ca2e980688aa1ccdc369acea4?pvs=141" target="_blank" rel="noopener noreferrer" style={{ color: '#0070f3', textDecoration: 'underline' }}>tutorial & docs</a> or <a href="https://organized-mochi-86e.notion.site/Dokumentasi-AI-Powered-WordPress-Post-Generator-20cf640ca2e980688aa1ccdc369acea4?pvs=141" style={{ color: '#0070f3', textDecoration: 'underline' }}>configure API</a>.
       </p>
 
          {/* Configuration Section */}
@@ -166,7 +165,7 @@ export default function Home() {
               <div>
                 <label htmlFor="wpAppPassword" style={styles.label}>WP Application Password:</label>
                 <input type="password" id="wpAppPassword" value={wpAppPassword} onChange={(e) => setWpAppPassword(e.target.value)}
-                       placeholder="lSos Y38G L6Xn Ukcs 3jh3 ULjP" style={styles.input} />
+                       placeholder="lSos xxx xxx xxxx xxxx" style={styles.input} />
               </div>
               <div>
                 <label htmlFor="openrouterApiKey" style={styles.label}>OpenRouter API Key:</label>
