@@ -37,7 +37,7 @@ Ikuti langkah-langkah ini untuk menjalankan aplikasi di lingkungan pengembangan 
 
 1.  **Clone Repositori:**
     ```bash
-    git clone [https://github.com/MDendiPurwanto/posts-llm-wordpress.git](https://github.com/MDendiPurwanto/posts-llm-wordpress.git) # Ganti dengan URL repositori Anda
+    git clone https://github.com/MDendiPurwanto/posts-llm-wordpress.git 
     cd posts-llm-wordpress
     ```
 
