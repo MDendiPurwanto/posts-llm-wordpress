@@ -82,8 +82,4 @@ Sebelum menggunakan generator, Anda perlu memasukkan kredensial API Anda. Aplika
 
 Kami menyambut kontribusi! Jika Anda menemukan *bug* atau memiliki ide untuk peningkatan, silakan buka *issue* atau kirim *pull request*.
 
-## Lisensi
-
-[Ganti dengan lisensi proyek Anda, contoh: MIT License]
-
 ---
