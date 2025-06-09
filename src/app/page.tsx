@@ -1,29 +1,29 @@
 // app/page.js
 'use client';
 
-import { useState, useEffect, CSSProperties } from 'react'; // Import CSSProperties here
+import { useState, useEffect, CSSProperties } from 'react';
+import toast, { Toaster } from 'react-hot-toast'; // Import toast and Toaster
 
 export default function Home() {
-  // State untuk form utama
+  // State for main form
   const [prompt, setPrompt] = useState('');
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState('');
   const [postUrl, setPostUrl] = useState('');
   const [generatedTitle, setGeneratedTitle] = useState('');
   const [generatedContent, setGeneratedContent] = useState('');
 
-  // State untuk konfigurasi
-  const [isConfigOpen, setIsConfigOpen] = useState(false); // Default: tertutup
+  // State for configuration
+  const [isConfigOpen, setIsConfigOpen] = useState(false);
   const [wpApiUrl, setWpApiUrl] = useState('');
   const [wpUsername, setWpUsername] = useState('');
   const [wpAppPassword, setWpAppPassword] = useState('');
   const [openrouterApiKey, setOpenrouterApiKey] = useState('');
   const [openrouterModel, setOpenrouterModel] = useState('');
-  const [configSaved, setConfigSaved] = useState(false); // Untuk indikator status config
+  const [configSaved, setConfigSaved] = useState(false);
 
-  // Efek untuk memuat konfigurasi dari localStorage saat komponen dimuat
+  // Effect to load configuration from localStorage when component mounts
   useEffect(() => {
-    if (typeof window !== 'undefined') { // Pastikan kode berjalan di browser
+    if (typeof window !== 'undefined') {
       const savedConfig = localStorage.getItem('appConfig');
       if (savedConfig) {
         const config = JSON.parse(savedConfig);
@@ -31,13 +31,13 @@ export default function Home() {
         setWpUsername(config.wpUsername || '');
         setWpAppPassword(config.wpAppPassword || '');
         setOpenrouterApiKey(config.openrouterApiKey || '');
-        setOpenrouterModel(config.openrouterModel || 'qwen/qwen3-235b-a22b:free'); // Set default jika tidak ada
+        setOpenrouterModel(config.openrouterModel || 'qwen/qwen3-235b-a22b:free');
         setConfigSaved(true);
       }
     }
-  }, []); // [] agar hanya berjalan sekali saat mount
+  }, []);
 
-  // Fungsi untuk menyimpan konfigurasi ke localStorage
+  // Function to save configuration to localStorage
   const saveConfig = () => {
     if (typeof window !== 'undefined') {
       const config = {
@@ -49,29 +49,27 @@ export default function Home() {
       };
       localStorage.setItem('appConfig', JSON.stringify(config));
       setConfigSaved(true);
-      setMessage('Configuration saved successfully!');
+      toast.success('Configuration saved successfully!'); // Use toast for success
     }
   };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setLoading(true);
-    setMessage('');
     setPostUrl('');
     setGeneratedTitle('');
     setGeneratedContent('');
 
-
-    // Periksa apakah semua konfigurasi penting sudah terisi
+    // Check if all important configurations are filled
     if (!wpApiUrl || !wpUsername || !wpAppPassword || !openrouterApiKey || !openrouterModel) {
-      setMessage('❌ Please save your API configurations first!');
+      toast.error('Please save your API configurations first!'); // Use toast for error
       setLoading(false);
       return;
     }
 
     try {
       // Step 1: Generate content with LLM
-      setMessage('🚀 Generating content with AI...');
+      toast.loading('Generating content with AI...'); // Use toast for loading
       const generateResponse = await fetch('/api/generate-post', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -91,7 +89,8 @@ export default function Home() {
       setGeneratedTitle(title);
       setGeneratedContent(content);
 
-      setMessage('📝 Content generated! Now sending to WordPress...');
+      toast.dismiss(); // Dismiss previous loading toast
+      toast.loading('Content generated! Now sending to WordPress...'); // New loading toast
 
       // Step 2: Create post in WordPress
       const wpResponse = await fetch('/api/wordpress', {
@@ -112,14 +111,16 @@ export default function Home() {
       }
 
       const result = await wpResponse.json();
-      setMessage('✅ Post created successfully in WordPress as a draft!');
+      toast.dismiss(); // Dismiss loading toast
+      toast.success('Post created successfully in WordPress as a draft!'); // Use toast for success
       setPostUrl(result.postUrl);
     } catch (error) {
       console.error('Error:', error);
+      toast.dismiss(); // Dismiss any loading toasts
       if (error instanceof Error) {
-        setMessage(`❌ Error: ${error.message}`);
+        toast.error(`Error: ${error.message}`); // Use toast for error
       } else {
-        setMessage('❌ An unknown error occurred.');
+        toast.error('An unknown error occurred.'); // Use toast for unknown error
       }
       setGeneratedTitle('');
       setGeneratedContent('');
@@ -130,6 +131,7 @@ export default function Home() {
 
   return (
     <div style={styles.container}>
+      <Toaster /> {/* Add Toaster component */}
       <h1 style={styles.heading}>AI-Powered WordPress Post Generator</h1>
       <p style={styles.subheading}>
         Enter a prompt, let AI craft your content, and publish it as a draft to your WordPress site.
@@ -217,28 +219,19 @@ export default function Home() {
         </form>
       </div>
 
-      {/* Status/Message Section */}
-      {message && (
-        <div style={{
-          ...styles.messageBox,
-          backgroundColor: message.startsWith('❌ Error') ? '#ffebe6' : '#e6ffe6',
-          borderLeft: `5px solid ${message.startsWith('❌ Error') ? '#f44336' : '#4CAF50'}`,
-        }}>
-          <p>{message}</p>
-          {postUrl && (
-            <a href={postUrl} target="_blank" rel="noopener noreferrer" style={styles.link}>
-              View Draft in WordPress →
-            </a>
-          )}
-        </div>
-      )}
-
       {/* Generated Content Preview Section */}
       {generatedTitle && generatedContent && (
         <div style={styles.section}>
           <h2 style={styles.sectionHeading}>2. AI-Generated Content Preview</h2>
           <div style={styles.contentPreviewCard}>
             <h3 style={styles.contentTitle}>{generatedTitle}</h3>
+            {postUrl && (
+              <p style={{marginBottom: '15px'}}>
+                <a href={postUrl} target="_blank" rel="noopener noreferrer" style={styles.link}>
+                  View Draft in WordPress →
+                </a>
+              </p>
+            )}
             <div
               style={styles.contentBody}
               dangerouslySetInnerHTML={{ __html: generatedContent }}
@@ -251,7 +244,6 @@ export default function Home() {
 }
 
 // Inline Styles for a cleaner UI
-// Memberikan tipe yang eksplisit pada objek styles
 const styles: Record<string, CSSProperties> = {
   container: {
     fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif',
@@ -289,22 +281,22 @@ const styles: Record<string, CSSProperties> = {
     marginBottom: '20px',
     borderBottom: '2px solid #ecf0f1',
     paddingBottom: '10px',
+    cursor: 'pointer', // Make heading clickable for toggling
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
-  // configGrid: {
-  //   display: 'grid',
-  //   gridTemplateColumns: '1fr 1fr',
-  //   gap: '15px',
-  //   alignItems: 'end',
-  // },
-    // --- Style Baru Ditambahkan ---
+  toggleArrow: {
+    fontSize: '0.8em',
+    marginLeft: '10px',
+  },
   fullWidthInput: {
-    marginBottom: '15px', // Spacing antara input full width dan grid di bawahnya
+    marginBottom: '15px',
   },
   gridContainer: {
     display: 'grid',
     gridTemplateColumns: '1fr 1fr',
     gap: '15px',
-    // alignItems: 'end', // Jika diperlukan untuk menyelaraskan input
   },
   input: {
     padding: '10px 15px',
@@ -316,7 +308,7 @@ const styles: Record<string, CSSProperties> = {
   },
   form: {
     display: 'flex',
-    flexDirection: 'column', // This is now explicitly typed
+    flexDirection: 'column',
     gap: '20px',
   },
   label: {
@@ -345,22 +337,12 @@ const styles: Record<string, CSSProperties> = {
     fontWeight: 'bold',
     transition: 'background-color 0.3s ease, transform 0.1s ease',
   },
-  messageBox: {
-    marginTop: '25px',
-    padding: '18px',
-    borderRadius: '8px',
-    boxShadow: '0 2px 10px rgba(0,0,0,0.05)',
-    fontSize: '1em',
-    lineHeight: '1.6',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '10px',
-  },
+  // Removed messageBox as toasts will handle messages
   link: {
     color: '#0070f3',
     textDecoration: 'none',
     fontWeight: 'bold',
-    alignSelf: 'flex-start',
+    // alignSelf: 'flex-start', // This might not be needed if moved inside content preview
     transition: 'color 0.3s ease',
   },
   contentPreviewCard: {
