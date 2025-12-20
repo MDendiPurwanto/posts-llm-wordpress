@@ -13,8 +13,19 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "AI-Powered WordPress Post Generator",
-  description: "Enter a prompt, let AI craft your content, and publish it as a draft to your WordPress site.",
+  title: {
+    template: '%s | WP Content Architect',
+    default: 'WP Content Architect - Generator Post WordPress AI',
+  },
+  description: 'Transformasi ide Anda menjadi postingan WordPress profesional secara otomatis menggunakan AI tercanggih.',
+  keywords: ['AI', 'WordPress', 'Next.js', 'Content Generator', 'Otomasi Blog', 'Universitas Majalengka'],
+  authors: [{ name: 'Dede Maulana' }],
+  openGraph: {
+    title: 'WP Content Architect',
+    description: 'Generator Post WordPress Berbasis AI',
+    type: 'website',
+    locale: 'id_ID',
+  },
 };
 
 export default function RootLayout({
@@ -23,10 +34,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <head>
-        <meta name="keywords" content="AI, WordPress, Next.js, Generator" />
-      </head>
+    <html lang="id" suppressHydrationWarning>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >

@@ -1,75 +1,84 @@
-// app/page.js
 'use client';
 
-import { useState, useEffect, CSSProperties } from 'react';
-import toast, { Toaster } from 'react-hot-toast'; // Import toast and Toaster
+import { useState, useEffect } from 'react';
+import toast, { Toaster } from 'react-hot-toast';
+import ConfigSection from '@/components/ConfigSection';
+import ContentForm from '@/components/ContentForm';
+import PreviewSection from '@/components/PreviewSection';
+import Link from 'next/link';
 
 export default function Home() {
-  // State for main form
+  // Main state
   const [prompt, setPrompt] = useState('');
   const [loading, setLoading] = useState(false);
   const [postUrl, setPostUrl] = useState('');
   const [generatedTitle, setGeneratedTitle] = useState('');
   const [generatedContent, setGeneratedContent] = useState('');
 
-  // State for configuration
-  const [isConfigOpen, setIsConfigOpen] = useState(false);
+  // Config state
   const [wpApiUrl, setWpApiUrl] = useState('');
   const [wpUsername, setWpUsername] = useState('');
   const [wpAppPassword, setWpAppPassword] = useState('');
   const [openrouterApiKey, setOpenrouterApiKey] = useState('');
-  const [openrouterModel, setOpenrouterModel] = useState('');
+  const [openrouterModel, setOpenrouterModel] = useState('google/gemini-2.0-flash-exp:free');
   const [configSaved, setConfigSaved] = useState(false);
 
-  // Effect to load configuration from localStorage when component mounts
+  // Reset configSaved when values change
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const savedConfig = localStorage.getItem('appConfig');
-      if (savedConfig) {
+    setConfigSaved(false);
+  }, [wpApiUrl, wpUsername, wpAppPassword, openrouterApiKey, openrouterModel]);
+
+  // Load config on mount
+  useEffect(() => {
+    const savedConfig = localStorage.getItem('appConfig');
+    if (savedConfig) {
+      try {
         const config = JSON.parse(savedConfig);
         setWpApiUrl(config.wpApiUrl || '');
         setWpUsername(config.wpUsername || '');
         setWpAppPassword(config.wpAppPassword || '');
         setOpenrouterApiKey(config.openrouterApiKey || '');
-        setOpenrouterModel(config.openrouterModel || 'qwen/qwen3-235b-a22b:free');
-        setConfigSaved(true);
+        setOpenrouterModel(config.openrouterModel || 'google/gemini-2.0-flash-exp:free');
+
+        // Wait for state updates to settle before checking if we should auto-save status
+        if (config.wpApiUrl && config.wpUsername && config.wpAppPassword && config.openrouterApiKey) {
+          setTimeout(() => setConfigSaved(true), 0);
+        }
+      } catch (e) {
+        console.error('Failed to parse config', e);
       }
     }
   }, []);
 
-  // Function to save configuration to localStorage
   const saveConfig = () => {
-    if (typeof window !== 'undefined') {
-      const config = {
-        wpApiUrl,
-        wpUsername,
-        wpAppPassword,
-        openrouterApiKey,
-        openrouterModel,
-      };
-      localStorage.setItem('appConfig', JSON.stringify(config));
-      setConfigSaved(true);
-      toast.success('Configuration saved successfully!'); // Use toast for success
-    }
+    const config = {
+      wpApiUrl,
+      wpUsername,
+      wpAppPassword,
+      openrouterApiKey,
+      openrouterModel,
+    };
+    localStorage.setItem('appConfig', JSON.stringify(config));
+    setConfigSaved(true);
+    toast.success('Configuration saved successfully!', {
+      style: { borderRadius: '12px', background: '#333', color: '#fff' },
+    });
   };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (loading) return;
+
     setLoading(true);
     setPostUrl('');
     setGeneratedTitle('');
     setGeneratedContent('');
 
-    // Check if all important configurations are filled
-    if (!wpApiUrl || !wpUsername || !wpAppPassword || !openrouterApiKey || !openrouterModel) {
-      toast.error('Please save your API configurations first!'); // Use toast for error
-      setLoading(false);
-      return;
-    }
+    const toastId = toast.loading('Starting process...');
 
     try {
-      // Step 1: Generate content with LLM
-      toast.loading('Generating content with AI...'); // Use toast for loading
+      // Step 1: Generate content
+      toast.loading('Generating content with AI...', { id: toastId });
       const generateResponse = await fetch('/api/generate-post', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -89,10 +98,9 @@ export default function Home() {
       setGeneratedTitle(title);
       setGeneratedContent(content);
 
-      toast.dismiss(); // Dismiss previous loading toast
-      toast.loading('Content generated! Now sending to WordPress...'); // New loading toast
+      // Step 2: WordPress Upload
+      toast.loading('Content generated! Publishing to WordPress...', { id: toastId });
 
-      // Step 2: Create post in WordPress
       const wpResponse = await fetch('/api/wordpress', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -111,262 +119,85 @@ export default function Home() {
       }
 
       const result = await wpResponse.json();
-      toast.dismiss(); // Dismiss loading toast
-      toast.success('Post created successfully in WordPress as a draft!'); // Use toast for success
       setPostUrl(result.postUrl);
-    } catch (error) {
-      console.error('Error:', error);
-      toast.dismiss(); // Dismiss any loading toasts
-      if (error instanceof Error) {
-        toast.error(`Error: ${error.message}`); // Use toast for error
-      } else {
-        toast.error('An unknown error occurred.'); // Use toast for unknown error
-      }
-      setGeneratedTitle('');
-      setGeneratedContent('');
+      toast.success('Post created as a draft!', { id: toastId });
+    } catch (error: any) {
+      console.error('Process error:', error);
+      toast.error(error.message || 'An error occurred during the process', { id: toastId });
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div style={styles.container}>
-      <Toaster /> {/* Add Toaster component */}
-      <h1 style={styles.heading}>AI-Powered WordPress Post Generator</h1>
-      <p style={styles.subheading}>
-        Enter a prompt, let AI craft your content, and publish it as a draft to your WordPress site.
-      </p>
-      <p style={{ ...styles.subheading, fontSize: '1em', marginTop: '-15px', marginBottom: '35px' }}>
-        Need help? See the <a href="https://organized-mochi-86e.notion.site/Dokumentasi-AI-Powered-WordPress-Post-Generator-20cf640ca2e980688aa1ccdc369acea4?pvs=141" target="_blank" rel="noopener noreferrer" style={{ color: '#0070f3', textDecoration: 'underline' }}>tutorial & docs</a> or <a href="https://organized-mochi-86e.notion.site/Dokumentasi-AI-Powered-WordPress-Post-Generator-20cf640ca2e980688aa1ccdc369acea4?pvs=141" style={{ color: '#0070f3', textDecoration: 'underline' }}>configure API</a>.
-      </p>
+    <main className="min-h-screen py-12 px-4 sm:px-6">
+      <Toaster position="top-right" />
 
-         {/* Configuration Section */}
-      <div style={styles.section}>
-        <h2 style={styles.sectionHeading} onClick={() => setIsConfigOpen(!isConfigOpen)}>
-          0. API Configuration
-          <span style={styles.toggleArrow}>
-            {isConfigOpen ? '▲' : '▼'}
-          </span>
-        </h2>
-        {isConfigOpen && (
-          <>
-            {/* Bagian WordPress Base URL (Satu Baris Penuh) */}
-            <div style={styles.fullWidthInput}> {/* Style baru untuk full width */}
-              <label htmlFor="wpApiUrl" style={styles.label}>WordPress Base URL:</label>
-              <input type="text" id="wpApiUrl" value={wpApiUrl} onChange={(e) => setWpApiUrl(e.target.value)}
-                     placeholder="https://yourdomain.com atau https://sub.yourdomain.com" style={styles.input} />
-            </div>
-
-            {/* Bagian Grid 2 Kolom untuk Input Lainnya */}
-            <div style={styles.gridContainer}> {/* Style baru untuk menampung grid */}
-              <div>
-                <label htmlFor="wpUsername" style={styles.label}>WP Username:</label>
-                <input type="text" id="wpUsername" value={wpUsername} onChange={(e) => setWpUsername(e.target.value)}
-                       placeholder="Your WordPress Username" style={styles.input} />
-              </div>
-              <div>
-                <label htmlFor="wpAppPassword" style={styles.label}>WP Application Password:</label>
-                <input type="password" id="wpAppPassword" value={wpAppPassword} onChange={(e) => setWpAppPassword(e.target.value)}
-                       placeholder="lSos xxx xxx xxxx xxxx" style={styles.input} />
-              </div>
-              <div>
-                <label htmlFor="openrouterApiKey" style={styles.label}>OpenRouter API Key:</label>
-                <input type="password" id="openrouterApiKey" value={openrouterApiKey} onChange={(e) => setOpenrouterApiKey(e.target.value)}
-                       placeholder="sk-or-..." style={styles.input} />
-              </div>
-              <div>
-                <label htmlFor="openrouterModel" style={styles.label}>OpenRouter Model:</label>
-                <input type="text" id="openrouterModel" value={openrouterModel} onChange={(e) => setOpenrouterModel(e.target.value)}
-                       placeholder="qwen/qwen3-235b-a22b:free" style={styles.input} />
-              </div>
-            </div>
-            <button onClick={saveConfig} style={{...styles.button, marginTop: '20px', backgroundColor: '#28a745'}}>
-              {configSaved ? 'Config Saved!' : 'Save Configuration'}
-            </button>
-          </>
-        )}
-      </div>
-
-
-      {/* Input Section */}
-      <div style={styles.section}>
-        <h2 style={styles.sectionHeading}>1. Tell AI What to Write</h2>
-        <form onSubmit={handleSubmit} style={styles.form}>
-          <label htmlFor="prompt" style={styles.label}>
-            Topic/Prompt:
-          </label>
-          <textarea
-            id="prompt"
-            value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
-            rows={6}
-            placeholder="e.g., Manfaat meditasi untuk kesehatan mental dan cara memulainya untuk pemula."
-            required
-            style={styles.textarea}
-          ></textarea>
-
-          <button
-            type="submit"
-            disabled={loading || !prompt.trim() || !configSaved}
-            style={{
-              ...styles.button,
-              backgroundColor: (loading || !configSaved) ? '#999' : '#0070f3',
-              cursor: (loading || !configSaved) ? 'not-allowed' : 'pointer'
-            }}
-          >
-            {loading ? 'Generating & Publishing...' : 'Generate & Publish Draft'}
-          </button>
-        </form>
-      </div>
-
-      {/* Generated Content Preview Section */}
-      {generatedTitle && generatedContent && (
-        <div style={styles.section}>
-          <h2 style={styles.sectionHeading}>2. AI-Generated Content Preview</h2>
-          <div style={styles.contentPreviewCard}>
-            <h3 style={styles.contentTitle}>{generatedTitle}</h3>
-            {postUrl && (
-              <p style={{marginBottom: '15px'}}>
-                <a href={postUrl} target="_blank" rel="noopener noreferrer" style={styles.link}>
-                  View Draft in WordPress →
-                </a>
-              </p>
-            )}
-            <div
-              style={styles.contentBody}
-              dangerouslySetInnerHTML={{ __html: generatedContent }}
-            />
+      <div className="max-w-4xl mx-auto space-y-8">
+        {/* Header */}
+        <header className="text-center space-y-4 mb-12">
+          <div className="inline-flex items-center justify-center p-3 bg-primary/10 rounded-2xl mb-4">
+            <svg className="w-8 h-8 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" />
+            </svg>
           </div>
-        </div>
-      )}
-    </div>
+          <h1 className="text-4xl md:text-5xl font-extrabold text-gray-900 tracking-tight">
+            WP Content <span className="text-primary italic">Architect</span>
+          </h1>
+          <p className="text-lg text-muted max-w-2xl mx-auto">
+            Transformasikan ide Anda menjadi postingan WordPress profesional menggunakan model AI canggih dan draf otomatis.
+          </p>
+          <div className="flex items-center justify-center gap-4 text-sm font-medium pt-2">
+            <Link href="/tutorials" className="text-primary hover:underline">Tutorial</Link>
+            <span className="text-gray-300">•</span>
+            <Link href="/support" className="text-primary hover:underline">Bantuan</Link>
+            <span className="text-gray-300">•</span>
+            <Link href="/docs" className="text-primary hover:underline">Dokumentasi</Link>
+          </div>
+        </header>
+
+        {/* Configuration Section */}
+        <ConfigSection
+          wpApiUrl={wpApiUrl} setWpApiUrl={setWpApiUrl}
+          wpUsername={wpUsername} setWpUsername={setWpUsername}
+          wpAppPassword={wpAppPassword} setWpAppPassword={setWpAppPassword}
+          openrouterApiKey={openrouterApiKey} setOpenrouterApiKey={setOpenrouterApiKey}
+          openrouterModel={openrouterModel} setOpenrouterModel={setOpenrouterModel}
+          saveConfig={saveConfig}
+          configSaved={configSaved}
+        />
+
+        {/* Form Section */}
+        <ContentForm
+          prompt={prompt}
+          setPrompt={setPrompt}
+          loading={loading}
+          handleSubmit={handleSubmit}
+          configSaved={configSaved}
+        />
+
+        {/* Results Section */}
+        <PreviewSection
+          title={generatedTitle}
+          content={generatedContent}
+          postUrl={postUrl}
+        />
+
+        {/* Footer */}
+        <footer className="text-center py-12 space-y-4">
+          <div className="flex flex-col items-center justify-center space-y-2">
+            <p className="text-sm font-semibold text-gray-900">
+              Program Studi Informatika • Fakultas Teknik
+            </p>
+            <p className="text-sm text-muted">
+              Universitas Majalengka
+            </p>
+          </div>
+          <p className="text-xs text-muted/60 border-t border-gray-100 pt-6">
+            &copy; {new Date().getFullYear()} WP Content Architect. Dibuat oleh <span className="text-primary font-medium">Dede Maulana</span>.
+          </p>
+        </footer>
+      </div>
+    </main>
   );
 }
-
-// Inline Styles for a cleaner UI
-const styles: Record<string, CSSProperties> = {
-  container: {
-    fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif',
-    padding: '40px',
-    maxWidth: '900px',
-    margin: '30px auto',
-    backgroundColor: '#f9f9f9',
-    borderRadius: '12px',
-    boxShadow: '0 8px 20px rgba(0,0,0,0.08)',
-    color: '#333'
-  },
-  heading: {
-    textAlign: 'center',
-    color: '#2c3e50',
-    fontSize: '2.5em',
-    marginBottom: '10px',
-  },
-  subheading: {
-    textAlign: 'center',
-    color: '#7f8c8d',
-    fontSize: '1.1em',
-    marginBottom: '30px',
-  },
-  section: {
-    backgroundColor: '#fff',
-    padding: '25px',
-    borderRadius: '10px',
-    boxShadow: '0 4px 15px rgba(0,0,0,0.05)',
-    marginBottom: '25px',
-    border: '1px solid #eee',
-  },
-  sectionHeading: {
-    color: '#34495e',
-    fontSize: '1.6em',
-    marginBottom: '20px',
-    borderBottom: '2px solid #ecf0f1',
-    paddingBottom: '10px',
-    cursor: 'pointer', // Make heading clickable for toggling
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  toggleArrow: {
-    fontSize: '0.8em',
-    marginLeft: '10px',
-  },
-  fullWidthInput: {
-    marginBottom: '15px',
-  },
-  gridContainer: {
-    display: 'grid',
-    gridTemplateColumns: '1fr 1fr',
-    gap: '15px',
-  },
-  input: {
-    padding: '10px 15px',
-    borderRadius: '8px',
-    border: '1px solid #dcdcdc',
-    fontSize: '1em',
-    width: '100%',
-    boxSizing: 'border-box',
-  },
-  form: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '20px',
-  },
-  label: {
-    fontSize: '1.1em',
-    fontWeight: '600',
-    color: '#34495e',
-    marginBottom: '5px',
-    display: 'block',
-  },
-  textarea: {
-    padding: '12px 15px',
-    borderRadius: '8px',
-    border: '1px solid #dcdcdc',
-    fontSize: '1em',
-    lineHeight: '1.5',
-    resize: 'vertical',
-    minHeight: '120px',
-    transition: 'border-color 0.3s ease',
-  },
-  button: {
-    padding: '14px 25px',
-    color: 'white',
-    border: 'none',
-    borderRadius: '8px',
-    fontSize: '1.1em',
-    fontWeight: 'bold',
-    transition: 'background-color 0.3s ease, transform 0.1s ease',
-  },
-  // Removed messageBox as toasts will handle messages
-  link: {
-    color: '#0070f3',
-    textDecoration: 'none',
-    fontWeight: 'bold',
-    // alignSelf: 'flex-start', // This might not be needed if moved inside content preview
-    transition: 'color 0.3s ease',
-  },
-  contentPreviewCard: {
-    padding: '20px',
-    border: '1px solid #e0e0e0',
-    borderRadius: '8px',
-    backgroundColor: '#fdfdfd',
-    boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.05)',
-  },
-  contentTitle: {
-    color: '#2c3e50',
-    fontSize: '1.8em',
-    marginBottom: '15px',
-    borderBottom: '1px dashed #eee',
-    paddingBottom: '10px',
-  },
-  contentBody: {
-    maxHeight: '450px',
-    overflowY: 'auto',
-    backgroundColor: '#ffffff',
-    borderRadius: '5px',
-    padding: '15px',
-    border: '1px solid #f0f0f0',
-    lineHeight: '1.7',
-    color: '#34495e',
-  }
-};
