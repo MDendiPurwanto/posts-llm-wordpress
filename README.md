@@ -21,8 +21,9 @@ Aplikasi ini didesain untuk membantu blogger, pembuat konten, dan profesional pe
 
 ## Persyaratan Teknis
 
-* Node.js **v18 LTS atau v20 LTS** (sangat penting untuk kompatibilitas dengan Next.js 15).
-* Next.js v15.3.3+ (App Router).
+* Node.js **v20.9+ atau v22 LTS** untuk kompatibilitas dengan Next.js 16.
+* npm **v10+**.
+* Next.js v16+ (App Router).
 * React v19.0.0+.
 * Instalasi WordPress aktif dengan:
     * REST API diaktifkan (default).
@@ -30,6 +31,7 @@ Aplikasi ini didesain untuk membantu blogger, pembuat konten, dan profesional pe
     * Izin tulis untuk direktori `wp-content/uploads`.
     * **Permalinks** diatur selain "Plain" (misalnya "Post name").
 * Akun [OpenRouter](https://openrouter.ai/) dengan API Key yang valid dan akses ke model LLM pilihan.
+* Akun [Pexels](https://www.pexels.com/api/) dengan API Key untuk pencarian gambar kontekstual.
 
 ## Instalasi dan Setup (Lokal)
 
@@ -43,22 +45,44 @@ Ikuti langkah-langkah ini untuk menjalankan aplikasi di lingkungan pengembangan 
 
 2.  **Instal Dependensi:**
     ```bash
-    npm install
-    # atau jika Anda menggunakan Yarn:
-    # yarn install
+    npm ci
     ```
 
-3.  **Jalankan Aplikasi dalam Mode Pengembangan:**
+3.  **Siapkan Environment Lokal:**
+    ```bash
+    cp .env.local.example .env.local
+    ```
+
+    Isi nilai berikut di `.env.local`:
+
+    ```bash
+    OPENROUTER_API_KEY=sk-or-...
+    OPENROUTER_MODEL=google/gemini-2.0-flash-exp:free
+    OPENROUTER_SITE_URL=http://localhost:3000
+    OPENROUTER_APP_TITLE=WP Content Architect
+
+    WORDPRESS_BASE_URL=https://your-wordpress-site.com
+    WORDPRESS_USERNAME=your-wp-username
+    WORDPRESS_APP_PASSWORD=xxxx xxxx xxxx xxxx xxxx xxxx
+
+    PEXELS_API_KEY=your-pexels-api-key
+    ```
+
+4.  **Jalankan Aplikasi dalam Mode Pengembangan:**
     ```bash
     npm run dev
-    # atau
-    # yarn dev
     ```
     Aplikasi akan berjalan di `http://localhost:3000`.
 
+5.  **Cek Build dan Lint:**
+    ```bash
+    npm run lint
+    npm run build
+    ```
+
 ## Konfigurasi API
 
-Sebelum menggunakan generator, Anda perlu memasukkan kredensial API Anda. Aplikasi ini dirancang agar Anda dapat mengonfigurasi ini langsung dari antarmuka web.
+Sebelum menggunakan generator, Anda bisa memakai konfigurasi dari `.env.local` atau mengisi kredensial langsung dari antarmuka web. Konfigurasi server dari `.env.local` lebih disarankan untuk lokal/deploy karena secret tidak perlu disimpan di `localStorage` browser.
 
 1.  Buka aplikasi di *browser* Anda (`http://localhost:3000` di lokal).
 2.  Pergi ke bagian **"0. API Configuration"** (klik panah bawah untuk membukanya).
@@ -69,15 +93,17 @@ Sebelum menggunakan generator, Anda perlu memasukkan kredensial API Anda. Aplika
     * **WP Application Password:** Dapatkan dari **Users > Profile > Application Passwords** di dasbor WordPress Anda. Beri nama "Next.js AI Generator" dan salin sandi yang muncul. Pastikan pengguna memiliki izin `create_posts` dan `upload_files`.
     * **OpenRouter API Key:** Dapatkan dari dashboard [OpenRouter](https://openrouter.ai/keys).
     * **OpenRouter Model:** Nama model AI yang ingin Anda gunakan dari OpenRouter (misalnya `qwen/qwen3-235b-a22b:free` atau `google/gemini-flash-1.5`).
+    * **Pexels API Key:** Dapatkan dari dashboard [Pexels API](https://www.pexels.com/api/) untuk mencari gambar yang sesuai konteks artikel.
 
-4.  Klik tombol **"Save Configuration"**. Konfigurasi ini akan disimpan di `localStorage` *browser* Anda.
+4.  Klik tombol **"Save Configuration"** jika Anda memakai konfigurasi dari form. Konfigurasi ini akan disimpan di `localStorage` *browser* Anda. Jika `.env.local` sudah lengkap, tombol generate bisa langsung digunakan tanpa menyimpan konfigurasi dari form.
 
 ## Penggunaan
 
 1.  Setelah konfigurasi disimpan, pergi ke bagian **"1. Tell AI What to Write"**.
 2.  Masukkan *prompt* atau topik untuk postingan blog yang Anda inginkan di *textarea*.
 3.  Klik tombol **"Generate & Publish Draft"**.
-4.  Aplikasi akan menampilkan status, pratinjau konten yang dihasilkan AI di bagian **"2. AI-Generated Content Preview"**, dan tautan ke *draft* postingan di WordPress jika berhasil.
+4.  Aplikasi akan membuat artikel, membuat query gambar kontekstual dari placeholder `[Gambar: ...]`, mencari foto di Pexels, mengunggah gambar ke WordPress, lalu membuat *draft* post.
+5.  Aplikasi akan menampilkan status, pratinjau konten yang dihasilkan AI di bagian **"2. AI-Generated Content Preview"**, dan tautan ke *draft* postingan di WordPress jika berhasil.
 ## Kontribusi
 
 Kami menyambut kontribusi! Jika Anda menemukan *bug* atau memiliki ide untuk peningkatan, silakan buka *issue* atau kirim *pull request*.

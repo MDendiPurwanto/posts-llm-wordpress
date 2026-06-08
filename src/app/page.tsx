@@ -21,42 +21,75 @@ export default function Home() {
   const [wpAppPassword, setWpAppPassword] = useState('');
   const [openrouterApiKey, setOpenrouterApiKey] = useState('');
   const [openrouterModel, setOpenrouterModel] = useState('google/gemini-2.0-flash-exp:free');
+  const [pexelsApiKey, setPexelsApiKey] = useState('');
   const [configSaved, setConfigSaved] = useState(false);
+  const [serverConfigReady, setServerConfigReady] = useState(false);
 
   // Reset configSaved when values change
   useEffect(() => {
     setConfigSaved(false);
-  }, [wpApiUrl, wpUsername, wpAppPassword, openrouterApiKey, openrouterModel]);
+  }, [wpApiUrl, wpUsername, wpAppPassword, openrouterApiKey, openrouterModel, pexelsApiKey]);
 
   // Load config on mount
   useEffect(() => {
     const savedConfig = localStorage.getItem('appConfig');
+    let hasSavedConfig = false;
+
     if (savedConfig) {
       try {
         const config = JSON.parse(savedConfig);
+        hasSavedConfig = true;
         setWpApiUrl(config.wpApiUrl || '');
         setWpUsername(config.wpUsername || '');
         setWpAppPassword(config.wpAppPassword || '');
         setOpenrouterApiKey(config.openrouterApiKey || '');
         setOpenrouterModel(config.openrouterModel || 'google/gemini-2.0-flash-exp:free');
+        setPexelsApiKey(config.pexelsApiKey || '');
 
         // Wait for state updates to settle before checking if we should auto-save status
-        if (config.wpApiUrl && config.wpUsername && config.wpAppPassword && config.openrouterApiKey) {
+        if (config.wpApiUrl && config.wpUsername && config.wpAppPassword && config.openrouterApiKey && config.pexelsApiKey) {
           setTimeout(() => setConfigSaved(true), 0);
         }
       } catch (e) {
         console.error('Failed to parse config', e);
       }
     }
+
+    fetch('/api/config')
+      .then((response) => response.ok ? response.json() : null)
+      .then((config) => {
+        if (!config) return;
+
+        setServerConfigReady(Boolean(config.ready));
+
+        if (config.openrouterModel && !hasSavedConfig) {
+          setOpenrouterModel(config.openrouterModel);
+        }
+
+        if (config.wpBaseUrl && !hasSavedConfig) {
+          setWpApiUrl(config.wpBaseUrl);
+        }
+      })
+      .catch((error) => {
+        console.error('Failed to load server config status', error);
+      });
   }, []);
 
   const saveConfig = () => {
+    if (!wpApiUrl.trim() || !wpUsername.trim() || !wpAppPassword.trim() || !openrouterApiKey.trim() || !openrouterModel.trim() || !pexelsApiKey.trim()) {
+      toast.error('Lengkapi konfigurasi WordPress, OpenRouter, dan Pexels dulu.', {
+        style: { borderRadius: '12px', background: '#333', color: '#fff' },
+      });
+      return;
+    }
+
     const config = {
       wpApiUrl,
       wpUsername,
       wpAppPassword,
       openrouterApiKey,
       openrouterModel,
+      pexelsApiKey,
     };
     localStorage.setItem('appConfig', JSON.stringify(config));
     setConfigSaved(true);
@@ -107,9 +140,11 @@ export default function Home() {
         body: JSON.stringify({
           title,
           content,
+          prompt,
           wpApiUrl,
           wpUsername,
           wpAppPassword,
+          pexelsApiKey,
         }),
       });
 
@@ -121,9 +156,10 @@ export default function Home() {
       const result = await wpResponse.json();
       setPostUrl(result.postUrl);
       toast.success('Post created as a draft!', { id: toastId });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Process error:', error);
-      toast.error(error.message || 'An error occurred during the process', { id: toastId });
+      const message = error instanceof Error ? error.message : 'An error occurred during the process';
+      toast.error(message, { id: toastId });
     } finally {
       setLoading(false);
     }
@@ -163,8 +199,10 @@ export default function Home() {
           wpAppPassword={wpAppPassword} setWpAppPassword={setWpAppPassword}
           openrouterApiKey={openrouterApiKey} setOpenrouterApiKey={setOpenrouterApiKey}
           openrouterModel={openrouterModel} setOpenrouterModel={setOpenrouterModel}
+          pexelsApiKey={pexelsApiKey} setPexelsApiKey={setPexelsApiKey}
           saveConfig={saveConfig}
           configSaved={configSaved}
+          serverConfigReady={serverConfigReady}
         />
 
         {/* Form Section */}
@@ -173,7 +211,7 @@ export default function Home() {
           setPrompt={setPrompt}
           loading={loading}
           handleSubmit={handleSubmit}
-          configSaved={configSaved}
+          configReady={configSaved || serverConfigReady}
         />
 
         {/* Results Section */}

@@ -5,7 +5,7 @@ interface ContentFormProps {
     setPrompt: (val: string) => void;
     loading: boolean;
     handleSubmit: (e: React.FormEvent<HTMLFormElement>) => void;
-    configSaved: boolean;
+    configReady: boolean;
 }
 
 export default function ContentForm({
@@ -13,7 +13,7 @@ export default function ContentForm({
     setPrompt,
     loading,
     handleSubmit,
-    configSaved
+    configReady
 }: ContentFormProps) {
     return (
         <div className="premium-card p-6 mb-8">
@@ -37,8 +37,8 @@ export default function ContentForm({
 
                 <button
                     type="submit"
-                    disabled={loading || !prompt.trim() || !configSaved}
-                    className={`w-full py-4 px-6 rounded-xl font-bold text-white shadow-lg transition-all transform hover:-translate-y-0.5 active:translate-y-0 flex items-center justify-center gap-2 ${(loading || !configSaved)
+                    disabled={loading || !prompt.trim() || !configReady}
+                    className={`w-full py-4 px-6 rounded-xl font-bold text-white shadow-lg transition-all transform hover:-translate-y-0.5 active:translate-y-0 flex items-center justify-center gap-2 ${(loading || !configReady)
                             ? 'bg-gray-400 cursor-not-allowed'
                             : 'bg-primary hover:bg-primary-hover shadow-primary/30'
                         }`}
@@ -56,7 +56,7 @@ export default function ContentForm({
                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
                             </svg>
-                            <span>{configSaved ? 'Generate & Publish Draft' : 'Save Config to Start'}</span>
+                            <span>{configReady ? 'Generate & Publish Draft' : 'Save Config to Start'}</span>
                         </>
                     )}
                 </button>

@@ -29,7 +29,7 @@ export default function DocumentationPage() {
         },
         {
             title: "Integrasi AI",
-            items: ["Header OpenRouter", "Parsing Markdown", "Prompt Engineering"]
+            items: ["Header OpenRouter", "Parsing Markdown", "Prompt Engineering", "Gambar Kontekstual"]
         }
     ];
 
@@ -46,6 +46,11 @@ export default function DocumentationPage() {
             title: "Mendapatkan API Key OpenRouter",
             text: "1. Buat akun di OpenRouter.ai.\n2. Buka Dashboard -> Keys.\n3. Buat API Key baru.\n4. Pastikan Anda memiliki saldo jika ingin menggunakan model berbayar, meskipun banyak model gratis (seperti Gemini Flash) yang tersedia.",
             code: "// Contoh ID Model\ngoogle/gemini-2.0-flash-exp:free"
+        },
+        "Gambar Kontekstual": {
+            title: "Gambar Kontekstual dengan Pexels",
+            text: "Aplikasi meminta AI membuat placeholder gambar berupa query foto yang spesifik, lalu mencari gambar di Pexels berdasarkan query tersebut. Jika Pexels tidak menemukan gambar yang cocok, proses akan berhenti dengan pesan error supaya draft tidak memakai gambar acak yang tidak relevan.",
+            code: "// Contoh placeholder dari AI\n[Gambar: teacher using laptop in classroom]\n[Gambar: small business owner packing online orders]"
         },
         "Deploy ke Produksi": {
             title: "Panduan Deployment Produksi",
@@ -152,7 +157,7 @@ export default function DocumentationPage() {
                             <div>
                                 <h2 className="text-2xl font-bold text-gray-900 mb-4">Keamanan & Praktik Terbaik</h2>
                                 <p className="text-gray-600 leading-relaxed text-lg">
-                                    Kami menggunakan **Base64 encoded Basic Authentication** untuk permintaan API WordPress. Pastikan situs WordPress Anda telah mengaktifkan 'Application Passwords' (bawaan di WP 5.6+). Kredensial Anda disimpan secara lokal di perangkat Anda melalui `localStorage` dan tidak pernah dikirim ke server kami.
+                                    Kami menggunakan **Base64 encoded Basic Authentication** untuk permintaan API WordPress. Pastikan situs WordPress Anda telah mengaktifkan &apos;Application Passwords&apos; (bawaan di WP 5.6+). Kredensial dapat dibaca dari .env.local di server atau disimpan lokal di browser jika Anda memakai form konfigurasi. Gambar diambil dari Pexels berdasarkan query kontekstual yang dibuat AI.
                                 </p>
                             </div>
 

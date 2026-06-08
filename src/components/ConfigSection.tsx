@@ -13,8 +13,11 @@ interface ConfigSectionProps {
     setOpenrouterApiKey: (val: string) => void;
     openrouterModel: string;
     setOpenrouterModel: (val: string) => void;
+    pexelsApiKey: string;
+    setPexelsApiKey: (val: string) => void;
     saveConfig: () => void;
     configSaved: boolean;
+    serverConfigReady: boolean;
 }
 
 export default function ConfigSection({
@@ -23,7 +26,8 @@ export default function ConfigSection({
     wpAppPassword, setWpAppPassword,
     openrouterApiKey, setOpenrouterApiKey,
     openrouterModel, setOpenrouterModel,
-    saveConfig, configSaved
+    pexelsApiKey, setPexelsApiKey,
+    saveConfig, configSaved, serverConfigReady
 }: ConfigSectionProps) {
     const [isOpen, setIsOpen] = useState(false);
 
@@ -48,6 +52,12 @@ export default function ConfigSection({
 
             {isOpen && (
                 <div className="mt-6 space-y-6">
+                    {serverConfigReady && (
+                        <div className="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm font-medium text-green-800">
+                            Konfigurasi server dari .env.local sudah lengkap, termasuk Pexels. Form ini hanya diperlukan jika ingin override dari browser.
+                        </div>
+                    )}
+
                     <div className="grid grid-cols-1 gap-6">
                         <div className="space-y-2">
                             <label className="text-sm font-semibold text-gray-700">WordPress Base URL</label>
@@ -102,6 +112,17 @@ export default function ConfigSection({
                                 className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all"
                             />
                         </div>
+                        <div className="space-y-2 md:col-span-2">
+                            <label className="text-sm font-semibold text-gray-700">Pexels API Key</label>
+                            <input
+                                type="password"
+                                value={pexelsApiKey}
+                                onChange={(e) => setPexelsApiKey(e.target.value)}
+                                placeholder="Pexels API key"
+                                className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all"
+                            />
+                            <p className="text-xs text-muted">Dipakai untuk mencari gambar yang sesuai konteks artikel dan placeholder gambar.</p>
+                        </div>
                     </div>
 
                     <button
@@ -109,7 +130,7 @@ export default function ConfigSection({
                         className={`w-full py-3 px-6 rounded-xl font-bold text-white shadow-lg transition-all transform hover:-translate-y-0.5 active:translate-y-0 ${configSaved ? 'bg-green-500 hover:bg-green-600' : 'bg-primary hover:bg-primary-hover shadow-primary/30'
                             }`}
                     >
-                        {configSaved ? '✓ Configuration Saved' : 'Save Configuration'}
+                        {configSaved ? 'Configuration Saved' : 'Save Configuration'}
                     </button>
                 </div>
             )}
