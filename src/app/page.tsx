@@ -7,6 +7,14 @@ import ContentForm from '@/components/ContentForm';
 import PreviewSection from '@/components/PreviewSection';
 import Link from 'next/link';
 
+async function readJsonResponse(response: Response) {
+  try {
+    return await response.json();
+  } catch {
+    return null;
+  }
+}
+
 export default function Home() {
   // Main state
   const [prompt, setPrompt] = useState('');
@@ -123,8 +131,8 @@ export default function Home() {
       });
 
       if (!generateResponse.ok) {
-        const errorData = await generateResponse.json();
-        throw new Error(errorData.details || 'Failed to generate content');
+        const errorData = await readJsonResponse(generateResponse);
+        throw new Error(errorData?.details || 'Failed to generate content');
       }
 
       const { title, content } = await generateResponse.json();
@@ -149,12 +157,15 @@ export default function Home() {
       });
 
       if (!wpResponse.ok) {
-        const errorData = await wpResponse.json();
-        throw new Error(errorData.details || 'Failed to create post in WordPress');
+        const errorData = await readJsonResponse(wpResponse);
+        if (errorData?.postUrl) {
+          setPostUrl(errorData.postUrl);
+        }
+        throw new Error(errorData?.details || 'Failed to create post in WordPress');
       }
 
-      const result = await wpResponse.json();
-      setPostUrl(result.postUrl);
+      const result = await readJsonResponse(wpResponse);
+      setPostUrl(result?.postUrl || '');
       toast.success('Post created as a draft!', { id: toastId });
     } catch (error: unknown) {
       console.error('Process error:', error);

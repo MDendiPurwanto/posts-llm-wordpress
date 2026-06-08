@@ -23,6 +23,11 @@ interface UploadedWordPressMedia {
     };
 }
 
+interface WordPressPost {
+    id: number | string;
+    link?: string;
+}
+
 class ApiRouteError extends Error {
     status: number;
 
@@ -189,12 +194,37 @@ async function uploadMedia(
     }
 }
 
+async function writeWordPressJson<T>(
+    url: string,
+    auth: string,
+    body: Record<string, unknown>,
+    step: string
+) {
+    const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Basic ${auth}`,
+        },
+        body: JSON.stringify(body),
+    });
+
+    if (!response.ok) {
+        const message = await readResponseError(response, `${step} failed`);
+        throw new ApiRouteError(`${step} failed: ${message}`, response.status);
+    }
+
+    return await response.json() as T;
+}
+
 function buildFeaturedImageQuery(title: string, prompt: string, content: string) {
     const firstPlaceholder = content.match(/\[Gambar:\s*([^\]]+)\]/)?.[1] || '';
     return [firstPlaceholder, prompt, title];
 }
 
 export async function POST(request: Request) {
+    let createdPost: WordPressPost | null = null;
+
     try {
         const body = await request.json();
         const title = typeof body.title === 'string' ? body.title.trim() : '';
@@ -212,7 +242,19 @@ export async function POST(request: Request) {
 
         await assertWordPressConnection(fullApiUrl, auth);
 
-        // 1. Unggah Featured Image
+        // 1. Buat draft minimal dulu supaya error create-post tidak tercampur dengan upload gambar/content.
+        createdPost = await writeWordPressJson<WordPressPost>(
+            `${fullApiUrl}/posts`,
+            auth,
+            {
+                title,
+                content: '<p>Draft sedang diproses oleh WP Content Architect.</p>',
+                status: 'draft',
+            },
+            'WordPress minimal draft creation'
+        );
+
+        // 2. Unggah Featured Image
         const featuredImageQuery = buildFeaturedImageQuery(title, prompt, content);
         const featuredImage = await searchPexelsPhoto(featuredImageQuery, imageConfig.pexelsApiKey);
         const featuredMediaFileName = `featured_image_${featuredImage.id}_${Date.now()}.jpeg`;
@@ -227,7 +269,7 @@ export async function POST(request: Request) {
 
         const featuredMediaId = uploadedFeaturedMedia.id;
 
-        // 2. Unggah Gambar dalam Konten
+        // 3. Unggah Gambar dalam Konten
         let processedContent = content;
         const llmImagePlaceholders = content.match(/\[Gambar:\s*([^\]]+)\]/g);
 
@@ -252,34 +294,29 @@ export async function POST(request: Request) {
             }
         }
 
-        // 3. Buat Post di WordPress
-        const postData = {
-            title: title,
-            content: processedContent,
-            status: 'draft',
-            featured_media: featuredMediaId,
-        };
-
-        const wpResponse = await fetch(`${fullApiUrl}/posts`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Basic ${auth}`,
+        // 4. Update konten dulu, lalu featured image secara terpisah agar fatal error WP lebih mudah dilacak.
+        const contentUpdate = await writeWordPressJson<WordPressPost>(
+            `${fullApiUrl}/posts/${createdPost.id}`,
+            auth,
+            {
+                content: processedContent,
             },
-            body: JSON.stringify(postData),
-        });
+            'WordPress content update'
+        );
 
-        if (!wpResponse.ok) {
-            const message = await readResponseError(wpResponse, 'Failed to create WordPress post');
-            throw new ApiRouteError(`WordPress post creation failed: ${message}`, wpResponse.status);
-        }
-
-        const result = await wpResponse.json();
+        const featuredUpdate = await writeWordPressJson<WordPressPost>(
+            `${fullApiUrl}/posts/${createdPost.id}`,
+            auth,
+            {
+                featured_media: featuredMediaId,
+            },
+            'WordPress featured image update'
+        );
 
         return NextResponse.json({
             success: true,
-            postId: result.id,
-            postUrl: result.link
+            postId: featuredUpdate.id || contentUpdate.id || createdPost.id,
+            postUrl: featuredUpdate.link || contentUpdate.link || createdPost.link
         });
 
     } catch (error: unknown) {
@@ -287,7 +324,9 @@ export async function POST(request: Request) {
         console.error('Error interacting with WordPress API:', getErrorMessage(error));
         return NextResponse.json({
             error: 'Failed to create WordPress post',
-            details: getErrorMessage(error)
+            details: getErrorMessage(error),
+            postId: createdPost?.id,
+            postUrl: createdPost?.link,
         }, { status });
     }
 }
