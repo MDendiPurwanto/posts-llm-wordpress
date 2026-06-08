@@ -23,10 +23,41 @@ interface UploadedWordPressMedia {
     };
 }
 
+class ApiRouteError extends Error {
+    status: number;
+
+    constructor(message: string, status = 500) {
+        super(message);
+        this.name = 'ApiRouteError';
+        this.status = status;
+    }
+}
+
+function stripHtml(value: string) {
+    return value
+        .replace(/<[^>]*>/g, ' ')
+        .replace(/&nbsp;/g, ' ')
+        .replace(/&amp;/g, '&')
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&quot;/g, '"')
+        .replace(/&#039;/g, "'")
+        .replace(/&apos;/g, "'")
+        .replace(/\s+/g, ' ')
+        .trim();
+}
+
 async function readResponseError(response: Response, fallback: string) {
     try {
-        const data = await response.json();
-        return typeof data?.message === 'string' ? data.message : fallback;
+        const text = await response.text();
+        if (!text) return fallback;
+
+        try {
+            const data = JSON.parse(text);
+            return typeof data?.message === 'string' ? stripHtml(data.message) : stripHtml(text);
+        } catch {
+            return stripHtml(text);
+        }
     } catch {
         return fallback;
     }
@@ -76,7 +107,7 @@ async function searchPexelsPhoto(queries: string[], pexelsApiKey: string) {
 
         if (!response.ok) {
             const message = await readResponseError(response, 'Failed to search Pexels images');
-            throw new Error(message);
+            throw new ApiRouteError(`Pexels image search failed: ${message}`, response.status);
         }
 
         const data = await response.json();
@@ -93,7 +124,26 @@ async function searchPexelsPhoto(queries: string[], pexelsApiKey: string) {
         }
     }
 
-    throw new Error(`No Pexels image found for query: ${cleanQueries[0]}`);
+    throw new ApiRouteError(`No Pexels image found for query: ${cleanQueries[0]}`, 422);
+}
+
+async function assertWordPressConnection(fullApiUrl: string, auth: string) {
+    const response = await fetch(`${fullApiUrl}/users/me?context=edit`, {
+        headers: {
+            Authorization: `Basic ${auth}`,
+        },
+    });
+
+    if (response.ok) {
+        return;
+    }
+
+    const message = await readResponseError(response, 'Failed to authenticate with WordPress');
+    const prefix = response.status === 401 || response.status === 403
+        ? 'WordPress authentication failed'
+        : 'WordPress REST API check failed';
+
+    throw new ApiRouteError(`${prefix}: ${message}`, response.status);
 }
 
 async function uploadMedia(
@@ -106,7 +156,9 @@ async function uploadMedia(
 ) {
     try {
         const imageResponse = await fetch(imageUrl);
-        if (!imageResponse.ok) throw new Error('Failed to fetch image');
+        if (!imageResponse.ok) {
+            throw new ApiRouteError('Failed to fetch image from Pexels', imageResponse.status);
+        }
         const imageBlob = await imageResponse.blob();
 
         const formData = new FormData();
@@ -127,7 +179,7 @@ async function uploadMedia(
         if (!uploadResponse.ok) {
             const message = await readResponseError(uploadResponse, 'Failed to upload media');
             console.error('WordPress Media Upload Error:', message);
-            throw new Error(message);
+            throw new ApiRouteError(`WordPress media upload failed: ${message}`, uploadResponse.status);
         }
 
         return await uploadResponse.json() as UploadedWordPressMedia;
@@ -157,6 +209,8 @@ export async function POST(request: Request) {
 
         const fullApiUrl = `${wpConfig.baseUrl}/wp-json/wp/v2`;
         const auth = Buffer.from(`${wpConfig.username}:${wpConfig.appPassword}`).toString('base64');
+
+        await assertWordPressConnection(fullApiUrl, auth);
 
         // 1. Unggah Featured Image
         const featuredImageQuery = buildFeaturedImageQuery(title, prompt, content);
@@ -217,7 +271,7 @@ export async function POST(request: Request) {
 
         if (!wpResponse.ok) {
             const message = await readResponseError(wpResponse, 'Failed to create WordPress post');
-            throw new Error(message);
+            throw new ApiRouteError(`WordPress post creation failed: ${message}`, wpResponse.status);
         }
 
         const result = await wpResponse.json();
@@ -229,10 +283,11 @@ export async function POST(request: Request) {
         });
 
     } catch (error: unknown) {
+        const status = error instanceof ApiRouteError ? error.status : 500;
         console.error('Error interacting with WordPress API:', getErrorMessage(error));
         return NextResponse.json({
             error: 'Failed to create WordPress post',
             details: getErrorMessage(error)
-        }, { status: 500 });
+        }, { status });
     }
 }
