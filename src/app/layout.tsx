@@ -8,7 +8,7 @@ export const metadata: Metadata = {
   },
   description: 'Transformasi ide Anda menjadi postingan WordPress profesional secara otomatis menggunakan AI tercanggih.',
   keywords: ['AI', 'WordPress', 'Next.js', 'Content Generator', 'Otomasi Blog', 'Universitas Majalengka'],
-  authors: [{ name: 'Dede Maulana' }],
+  authors: [{ name: 'Muhamad Dendi Purwanto' }],
   openGraph: {
     title: 'WP Content Architect',
     description: 'Generator Post WordPress Berbasis AI',

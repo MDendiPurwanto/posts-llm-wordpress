@@ -234,16 +234,16 @@ export default function Home() {
 
         {/* Footer */}
         <footer className="text-center py-12 space-y-4">
-          <div className="flex flex-col items-center justify-center space-y-2">
+          {/* <div className="flex flex-col items-center justify-center space-y-2">
             <p className="text-sm font-semibold text-gray-900">
               Program Studi Informatika • Fakultas Teknik
             </p>
             <p className="text-sm text-muted">
               Universitas Majalengka
             </p>
-          </div>
+          </div> */}
           <p className="text-xs text-muted/60 border-t border-gray-100 pt-6">
-            &copy; {new Date().getFullYear()} WP Content Architect. Dibuat oleh <span className="text-primary font-medium">Dede Maulana</span>.
+            &copy; {new Date().getFullYear()} WP Content Architect. Dibuat oleh <span className="text-primary font-medium">Maspur</span>.
           </p>
         </footer>
       </div>
